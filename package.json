@@ -1,13 +1,13 @@
 {
   "name": "lyricpad-next",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "Cross-platform songwriting notepad with phonetic rhyme intelligence and AI assistance",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "esbuild src/app.js --bundle --outfile=public/app.js --format=esm --target=es2020 --minify",
+    "build": "node --check src/app.js && esbuild src/app.js --bundle --outfile=public/app.js --format=esm --target=es2020 --minify",
     "start": "node server.mjs",
     "dev": "npm run build && node server.mjs",
     "postinstall": "npm run build"
