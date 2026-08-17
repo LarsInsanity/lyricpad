@@ -26,3 +26,33 @@
   .end-word{display:none}.gutter-rhyme{gap:2px}.cue-dot{min-width:0}
 }
 .button-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--text);border:1px solid var(--line);background:#202430;border-radius:8px;padding:8px 10px;font-size:13px}.button-link:hover{border-color:var(--accent)}
+
+/* v0.7 editor engine: CodeMirror renders both text and rhyme decorations in one surface. */
+.editor-wrap{display:grid;grid-template-columns:minmax(0,1fr) 176px;overflow:hidden}
+.editor-host{grid-column:1;grid-row:1;min-width:0;min-height:0;height:100%;overflow:hidden;background:#11141a}
+.editor-host .cm-editor{height:100%;background:transparent;color:var(--text);font:20px/1.72 Georgia,"Times New Roman",serif}
+.editor-host .cm-scroller{height:100%;overflow:auto;font-family:Georgia,"Times New Roman",serif;line-height:1.72}
+.editor-host .cm-content{padding:28px 0 80px;caret-color:#fff;min-height:100%}
+.editor-host .cm-line{padding:0 clamp(20px,5vw,72px);line-height:1.72;min-height:34.4px}
+.editor-host .cm-gutters{display:none!important}
+.editor-host .cm-focused{outline:none}
+.editor-host .cm-cursor,.editor-host .cm-dropCursor{border-left-color:#fff}
+.editor-host .cm-selectionBackground,.editor-host .cm-content ::selection{background:rgba(107,130,220,.42)!important}
+.editor-host .cm-activeLine{background:rgba(255,255,255,.015)}
+.editor-host .cm-section-line{color:#9aaac3;font-weight:750;letter-spacing:.01em}
+.editor-host .cm-rhyme-word{font-weight:750;text-decoration-thickness:1px;text-underline-offset:3px}
+.editor-host .cm-rhyme-word.rhyme-a{color:#71d7ff;text-decoration-color:#71d7ff80}
+.editor-host .cm-rhyme-word.rhyme-b{color:#bc9cff;text-decoration-color:#bc9cff80}
+.editor-host .cm-rhyme-word.rhyme-c{color:#63e6a6;text-decoration-color:#63e6a680}
+.editor-host .cm-rhyme-word.rhyme-d{color:#ff9fb5;text-decoration-color:#ff9fb580}
+.editor-host .cm-rhyme-word.rhyme-e{color:#ffd166;text-decoration-color:#ffd16680}
+.editor-host .cm-rhyme-word.rhyme-f{color:#ffad66;text-decoration-color:#ffad6680}
+.editor-host .cm-rhyme-word.rhyme-g{color:#8be9fd;text-decoration-color:#8be9fd80}
+.editor-host .cm-rhyme-word.rhyme-h{color:#c9a7ff;text-decoration-color:#c9a7ff80}
+.rhyme-engine-status{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+@media(max-width:800px){
+  .editor-wrap{grid-template-columns:minmax(0,1fr) 92px}
+  .editor-host .cm-editor{font-size:18px}
+  .editor-host .cm-line{padding:0 16px;min-height:30.96px}
+  .editor-host .cm-content{padding:22px 0 100px}
+}
