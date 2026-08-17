@@ -1,96 +1,114 @@
-# LyricPad Next v0.6 — Render Edition
+# LyricPad Next v0.6.1 – Render root-route fix
 
-LyricPad Next v0.6 is the first build prepared for a permanent hosted HTTPS deployment on Render while still running locally for development.
+# LyricPad Next v0.5
 
-## What changed
+Cross-platform LyricPad prototype for Windows, Android/Samsung and iPad.
 
-- Render-compatible `PORT` + `0.0.0.0` server binding
-- `/health` endpoint for Render health checks
-- `render.yaml` Blueprint
-- `.gitignore` protects `.env`, certificates, and local dependencies
-- Hosted/PWA access panel automatically shows the public URL
-- OpenAI requests remain server-side; the API key is never sent to the browser
-- Optional `APP_ACCESS_KEY` protects the hosted AI proxy from unauthorized use
-- PWA cache bumped to v0.6
-- Local development and Ollama support remain available
+## Main v0.5 change: stable writepad
 
-## Recommended Render deployment
+v0.2-v0.4 tried to color rhyme words inside the browser editor. Different browser text-layout engines could make the caret/highlight rendering look offset. v0.5 removes that entire approach.
 
-### 1. Put this folder in GitHub
+The lyric editor is now a **single native `<textarea>`**. There is no duplicate text layer, contenteditable normalization, or character-level highlight overlay. Normal typing, selection, mobile keyboards, paste and cursor positioning are handled directly by the browser.
 
-Create a GitHub repository and commit the contents of this folder. Do **not** add a real `.env` file. `.gitignore` already excludes it.
+Rhyme information remains visible in the synchronized gutter:
 
-### 2. Create the service on Render
+- line number
+- syllable count
+- colored rhyme family (A/B/C/...)
+- end word beside the rhyme family on desktop
 
-You can either:
+On smaller screens the gutter collapses to the compact family cue to leave more room for lyrics.
 
-- use Render **New → Blueprint** and select the repository (Render reads `render.yaml`), or
-- create a Node **Web Service** manually.
+## Other features
 
-Manual settings:
+- Multi-song tabs with autosave/session restore
+- BPM, key and song notes per song
+- Rhyme family detection
+- Auto / A / B / C / New / None continuation override
+- Compact offline rhyme list
+- OpenAI or Ollama AI provider through the Node server
+- Next lines / Tighten / More vivid
+- AI suggestion cards with Copy / Insert / Replace line
+- Workspace JSON import/export
+- Responsive phone/tablet layout
+- PWA manifest + offline service worker (requires a secure context outside localhost)
+
+## Run on Windows
+
+Requires Node.js 18+.
+
+1. Extract the folder.
+2. Double-click `run_lyricpad_next.bat`.
+3. LyricPad opens at `http://localhost:8787`.
+
+No npm install is needed.
+
+## Phone / tablet: easy same-Wi-Fi test
+
+1. Start LyricPad on the PC.
+2. Open the **Phone** tab in LyricPad's right-hand tools panel.
+3. It shows the PC's detected LAN address, e.g. `http://192.168.1.50:8787`.
+4. Keep the PC and phone/tablet on the same Wi-Fi.
+5. Open that address on the Samsung/iPad.
+6. If Windows Firewall asks about Node.js, allow it on **Private networks**.
+
+This is enough to test and use the responsive UI on your phone while the PC is running.
+
+## Optional local HTTPS / installable PWA
+
+For proper secure-context PWA features on a LAN address:
+
+1. Double-click `setup_phone_https.bat` once.
+2. It creates a self-signed LyricPad certificate for `localhost` and the PC's current LAN IPv4 address.
+3. It enables HTTPS on port **8788** in `.env`.
+4. Restart `run_lyricpad_next.bat`.
+5. Open the **Phone** tab. It now shows an `https://...:8788` address and a certificate download link.
+
+Because this is a local self-signed certificate, the phone/tablet must trust it before its browser treats the site as fully secure.
+
+### Samsung / Android
+
+Download/transfer `certs/lyricpad-local.cer` to the phone and install it as a user CA certificate using Android/Samsung Security settings. Menu names differ by Android/One UI version. Then reopen Chrome and use the HTTPS address shown in LyricPad.
+
+### iPad
+
+Open/install the certificate on iPad, then enable full trust for it under **Settings → General → About → Certificate Trust Settings**. Then use the HTTPS address shown in LyricPad in Safari and choose **Add to Home Screen**.
+
+If local certificate setup is annoying, plain HTTP LAN mode remains the easiest development/testing route. A hosted HTTPS deployment is the cleaner long-term solution for anywhere/anytime access.
+
+## OpenAI
+
+The browser never receives your OpenAI API key. Put it in `.env` on the Node server:
 
 ```text
-Build command: npm install
-Start command: npm start
-Health check: /health
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5.6
 ```
 
-Do not manually set `PORT` on Render. Render supplies it.
-
-### 3. Add environment variables in Render
-
-Required for OpenAI:
-
-```text
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5-mini
-```
-
-Strongly recommended:
-
-```text
-APP_ACCESS_KEY=make-this-a-long-random-private-string
-```
-
-The public frontend itself contains no OpenAI key. If `APP_ACCESS_KEY` is configured, AI requests are rejected unless the browser sends the same key.
-
-After deployment, open **Settings → LyricPad access key** on each of your devices and enter the same value once. It is stored only in that browser's LyricPad workspace.
-
-### 4. Open LyricPad anywhere
-
-Render gives the service an HTTPS `onrender.com` URL. Open the **Access** tab inside LyricPad to copy it.
-
-On Android/Samsung, open the URL in Chrome/Samsung Internet and choose **Install app** / **Add to Home screen** when available.
-
-On iPad, open it in Safari, use **Share → Add to Home Screen**.
-
-## Local Windows development
-
-Requires Node.js 20+.
-
-Double-click:
-
-```text
-run_lyricpad_next.bat
-```
-
-Then open `http://localhost:8787`.
-
-For local OpenAI usage, copy `.env.example` to `.env` and fill in `OPENAI_API_KEY`. The batch launcher already creates `.env` from the example when it is missing.
+Then select OpenAI in Settings.
 
 ## Ollama
 
-Ollama still works when the Node server is running on the same PC as Ollama:
+Ollama defaults to:
 
 ```text
 OLLAMA_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=gemma3:4b
 ```
 
-A Render-hosted server cannot reach Ollama running on your home PC at `127.0.0.1`, so use OpenAI for the hosted/mobile version.
-
 ## Current sync limitation
 
-The hosted app is now reachable from any device, but songs are still stored in each browser's local storage. Your PC, Samsung, and iPad therefore have separate song libraries in v0.6.
+The song workspace is still stored in each browser/device's local storage. Phone, iPad and PC do **not** automatically share the same song library yet. Cross-device account/sync is the next major infrastructure feature.
 
-The next infrastructure milestone is authenticated cross-device song sync (for example with Postgres), while retaining offline local editing.
+
+## v0.6.1 Render fix
+
+The root route `/` now explicitly serves `public/index.html`. At startup the server logs whether `public/index.html` exists and lists the files found in `public/`. If the frontend is missing from the Git repository, the root page returns a clear diagnostic instead of a generic `Not found`.
+
+Recommended Render settings:
+
+- Build Command: `npm install` (or `yarn`)
+- Start Command: `npm start` (or `node server.mjs`)
+- Health Check Path: `/health`
+
+Make sure the repository contains the full `public/` folder alongside `server.mjs` and `package.json`.

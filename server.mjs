@@ -17,6 +17,7 @@ const PFX_PASS = process.env.HTTPS_PFX_PASS || 'lyricpad';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
 const APP_ACCESS_KEY = process.env.APP_ACCESS_KEY || '';
 const IS_RENDER = String(process.env.RENDER || '').toLowerCase() === 'true';
+const INDEX_FILE = path.join(PUBLIC, 'index.html');
 const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:4b';
 
@@ -125,10 +126,25 @@ function serveStatic(req, res) {
 
 const handler = async (req, res) => {
   try {
-    if (req.method === 'GET' && req.url === '/health') {
+    const requestUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const pathname = requestUrl.pathname;
+
+    // Serve the app shell explicitly. This avoids platform/path edge cases and
+    // makes a missing frontend obvious in deployment logs.
+    if (req.method === 'GET' && pathname === '/') {
+      if (!fs.existsSync(INDEX_FILE)) {
+        console.error(`[frontend] Missing ${INDEX_FILE}`);
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(`LyricPad frontend is missing. Expected: ${INDEX_FILE}`);
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      return fs.createReadStream(INDEX_FILE).pipe(res);
+    }
+
+    if (req.method === 'GET' && pathname === '/health') {
       return json(res, 200, { ok: true, service: 'lyricpad-next' });
     }
-    if (req.method === 'GET' && req.url === '/api/status') {
+    if (req.method === 'GET' && pathname === '/api/status') {
       const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
       const proto = forwardedProto || (req.socket.encrypted ? 'https' : 'http');
       const host = req.headers.host || `localhost:${PORT}`;
@@ -149,13 +165,13 @@ const handler = async (req, res) => {
         httpsPort: HTTPS_PORT
       });
     }
-    if (req.method === 'GET' && req.url === '/lyricpad-local.cer') {
+    if (req.method === 'GET' && pathname === '/lyricpad-local.cer') {
       const certFile = path.join(__dirname, 'certs', 'lyricpad-local.cer');
       if (!fs.existsSync(certFile)) { res.writeHead(404); return res.end('Local certificate has not been created yet.'); }
       res.writeHead(200, { 'Content-Type': 'application/x-x509-ca-cert', 'Content-Disposition': 'attachment; filename=lyricpad-local.cer', 'Cache-Control': 'no-store' });
       return fs.createReadStream(certFile).pipe(res);
     }
-    if (req.method === 'POST' && req.url === '/api/ai') {
+    if (req.method === 'POST' && pathname === '/api/ai') {
       if (APP_ACCESS_KEY) {
         const supplied = String(req.headers['x-lyricpad-key'] || '');
         if (!supplied || supplied !== APP_ACCESS_KEY) return json(res, 401, { error: 'LyricPad access key is missing or incorrect.' });
@@ -180,6 +196,9 @@ const handler = async (req, res) => {
 
 const server = http.createServer(handler);
 server.listen(PORT, '0.0.0.0', () => {
+  console.log(`[frontend] public dir: ${PUBLIC}`);
+  console.log(`[frontend] index.html: ${fs.existsSync(INDEX_FILE) ? 'FOUND' : 'MISSING'}`);
+  if (fs.existsSync(PUBLIC)) console.log(`[frontend] files: ${fs.readdirSync(PUBLIC).join(', ')}`);
   console.log(`LyricPad Next running at http://localhost:${PORT}`);
   for (const ip of lanAddresses()) console.log(`Phone test: http://${ip}:${PORT}`);
 });
