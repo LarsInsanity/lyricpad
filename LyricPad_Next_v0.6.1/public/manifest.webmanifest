@@ -1,0 +1,13 @@
+{
+  "name": "LyricPad Next",
+  "short_name": "LyricPad",
+  "description": "Offline-first songwriting notepad with rhyme and AI assistance",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101218",
+  "theme_color": "#101218",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

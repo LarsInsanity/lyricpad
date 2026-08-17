@@ -1,0 +1,12 @@
+{
+  "name": "lyricpad-next",
+  "version": "0.6.1",
+  "private": true,
+  "description": "Cross-platform offline-first songwriting notepad with rhyme and AI assistance",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}
