@@ -56,3 +56,16 @@
   .editor-host .cm-line{padding:0 16px;min-height:30.96px}
   .editor-host .cm-content{padding:22px 0 100px}
 }
+
+/* v0.8 realtime feedback */
+.feedback-warning{color:#ffd166;font-size:11px;margin-left:auto}
+.feedback-summary{padding:10px 11px;border:1px solid var(--line);background:#12151c;border-radius:10px;color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:14px}.feedback-summary b{color:var(--text)}.feedback-summary span{opacity:.55;margin:0 3px}
+.feedback-list{display:grid;gap:7px}.feedback-item{border:1px solid var(--line);border-radius:10px;padding:9px 10px;line-height:1.45;text-align:left;width:100%}.feedback-item.positive{background:#142019;border-color:#284533;color:#b9e8ca;font-size:13px}.feedback-item.issue{background:#20232c;color:var(--text)}.feedback-item.issue:hover{border-color:#515a70}.feedback-item.issue b{display:block;font-size:13px;margin-bottom:4px}.feedback-item.issue span{display:block;color:var(--muted);font-size:12px}
+.feedback-ai{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}.section-title .optional{font-size:10px;text-transform:none;letter-spacing:0;border:1px solid var(--line);padding:2px 5px;border-radius:999px;margin-left:5px}.toggle-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}.toggle-row input{accent-color:#7188eb}.feedback-cost{font-size:12px;margin:7px 0 10px}.feedback-actions{display:flex;gap:7px;margin-bottom:10px}.feedback-ai-status{font-size:12px;color:var(--accent2);margin:8px 0}.feedback-ai-text{border:1px solid var(--line);background:#11141a;border-radius:10px;padding:10px;font-size:13px;line-height:1.55;min-height:72px;white-space:normal}
+.side-tabs{overflow-x:auto;scrollbar-width:thin}.side-tabs button{min-width:70px;white-space:nowrap}
+
+/* v0.9 cloud library */
+.cloud-pill{white-space:nowrap;color:var(--muted);padding:7px 9px}.cloud-pill:hover{color:var(--text)}
+.cloud-card,.cloud-user,.cloud-sync-status{border:1px solid var(--line);background:#12151c;border-radius:10px;padding:11px;margin-bottom:10px}.cloud-card b,.cloud-user b{color:var(--text)}
+.cloud-user{display:flex;gap:10px;justify-content:space-between;align-items:center}.cloud-sync-status{font-size:12px;color:var(--accent2)}.cloud-actions{display:flex;gap:7px;margin-bottom:10px}.cloud-list{display:grid;gap:8px}.cloud-song{border:1px solid var(--line);background:#20232c;border-radius:10px;padding:10px;display:grid;gap:8px}.cloud-song-main{display:grid;gap:3px}.cloud-song-main span{font-size:11px;color:var(--muted)}.cloud-song-actions{display:flex;gap:6px}.cloud-song-actions button{font-size:12px;padding:5px 8px}.danger-button{color:#ffb3b3;border-color:#663737}.danger-button:hover{border-color:#a75858}
+@media(max-width:800px){.cloud-song-actions{flex-wrap:wrap}}

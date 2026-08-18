@@ -20,6 +20,15 @@ const IS_RENDER = String(process.env.RENDER || '').toLowerCase() === 'true';
 const INDEX_FILE = path.join(PUBLIC, 'index.html');
 const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:4b';
+const FIREBASE_CONFIG = {
+  apiKey: process.env.FIREBASE_API_KEY || '',
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.FIREBASE_APP_ID || ''
+};
+const FIREBASE_ENABLED = Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.authDomain && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId);
 
 
 function lanAddresses() {
@@ -144,6 +153,9 @@ const handler = async (req, res) => {
     if (req.method === 'GET' && pathname === '/health') {
       return json(res, 200, { ok: true, service: 'lyricpad-next' });
     }
+    if (req.method === 'GET' && pathname === '/api/config') {
+      return json(res, 200, { firebase: { enabled: FIREBASE_ENABLED, config: FIREBASE_ENABLED ? FIREBASE_CONFIG : null } });
+    }
     if (req.method === 'GET' && pathname === '/api/status') {
       const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
       const proto = forwardedProto || (req.socket.encrypted ? 'https' : 'http');
@@ -156,6 +168,7 @@ const handler = async (req, res) => {
         accessKeyRequired: Boolean(APP_ACCESS_KEY),
         openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
         openaiModel: OPENAI_MODEL,
+        firebaseConfigured: FIREBASE_ENABLED,
         ollamaUrl: OLLAMA_URL,
         ollamaModel: OLLAMA_MODEL,
         lanAddresses: lanAddresses(),

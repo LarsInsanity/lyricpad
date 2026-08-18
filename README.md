@@ -1,114 +1,223 @@
-# LyricPad Next v0.6.1 – Render root-route fix
+# LyricPad Next v0.9 — Cloud + Feature Parity
 
-# LyricPad Next v0.5
+LyricPad Next is a cross-platform songwriting notepad with phonetic rhyme analysis, syllable/rhyme gutters, realtime feedback, rhyme-aware AI suggestions, and optional Firestore cloud sync.
 
-Cross-platform LyricPad prototype for Windows, Android/Samsung and iPad.
+## v0.9 highlights
 
-## Main v0.5 change: stable writepad
+- **Brainstorm is back** as a visible AI action.
+- Realtime local feedback + optional AI coach from v0.8 remain included.
+- Google sign-in with Firebase Authentication.
+- Firestore song library shared across PC, Samsung/Android, iPad, and other browsers.
+- Local-first autosave remains enabled even when cloud sync is configured.
+- Debounced cloud writes rather than a Firestore write on every keystroke.
+- Realtime cloud updates from another device.
+- Offline Firestore cache on supported browsers.
+- Cloud library can reopen songs that are no longer open as local tabs.
+- Explicit cloud deletion; closing a tab does **not** delete its Firestore copy.
+- Basic conflict protection using each song's `updatedAt` value: a genuinely newer cloud edit can refresh an open local song, while a newer local edit is pushed back to Firestore.
+- Workspace exports deliberately omit the LyricPad AI access key.
 
-v0.2-v0.4 tried to color rhyme words inside the browser editor. Different browser text-layout engines could make the caret/highlight rendering look offset. v0.5 removes that entire approach.
+## Existing songwriting features
 
-The lyric editor is now a **single native `<textarea>`**. There is no duplicate text layer, contenteditable normalization, or character-level highlight overlay. Normal typing, selection, mobile keyboards, paste and cursor positioning are handled directly by the browser.
+- CodeMirror lyric editor with native rhyme-end decorations (no overlay/caret drift).
+- Large pronunciation/rhyme dataset loaded in the browser.
+- Perfect and near/slant rhyme suggestions.
+- Syllable counts.
+- Automatic A/B/C/D rhyme-family detection.
+- Manual rhyme override: Auto, existing family, New, or None.
+- AI Next lines, Tighten, More vivid, and Brainstorm.
+- Copy / Insert / Replace actions for AI lyric suggestions.
+- Multiple song tabs.
+- Realtime mechanical feedback and gutter warnings.
+- Optional debounced AI stanza review.
+- PWA/offline app shell.
+- Local workspace import/export.
+- Render-compatible Node backend for OpenAI.
 
-Rhyme information remains visible in the synchronized gutter:
+---
 
-- line number
-- syllable count
-- colored rhyme family (A/B/C/...)
-- end word beside the rhyme family on desktop
+# Render deployment
 
-On smaller screens the gutter collapses to the compact family cue to leave more room for lyrics.
+Use the same free Render Web Service setup as before.
 
-## Other features
+**Build command**
 
-- Multi-song tabs with autosave/session restore
-- BPM, key and song notes per song
-- Rhyme family detection
-- Auto / A / B / C / New / None continuation override
-- Compact offline rhyme list
-- OpenAI or Ollama AI provider through the Node server
-- Next lines / Tighten / More vivid
-- AI suggestion cards with Copy / Insert / Replace line
-- Workspace JSON import/export
-- Responsive phone/tablet layout
-- PWA manifest + offline service worker (requires a secure context outside localhost)
-
-## Run on Windows
-
-Requires Node.js 18+.
-
-1. Extract the folder.
-2. Double-click `run_lyricpad_next.bat`.
-3. LyricPad opens at `http://localhost:8787`.
-
-No npm install is needed.
-
-## Phone / tablet: easy same-Wi-Fi test
-
-1. Start LyricPad on the PC.
-2. Open the **Phone** tab in LyricPad's right-hand tools panel.
-3. It shows the PC's detected LAN address, e.g. `http://192.168.1.50:8787`.
-4. Keep the PC and phone/tablet on the same Wi-Fi.
-5. Open that address on the Samsung/iPad.
-6. If Windows Firewall asks about Node.js, allow it on **Private networks**.
-
-This is enough to test and use the responsive UI on your phone while the PC is running.
-
-## Optional local HTTPS / installable PWA
-
-For proper secure-context PWA features on a LAN address:
-
-1. Double-click `setup_phone_https.bat` once.
-2. It creates a self-signed LyricPad certificate for `localhost` and the PC's current LAN IPv4 address.
-3. It enables HTTPS on port **8788** in `.env`.
-4. Restart `run_lyricpad_next.bat`.
-5. Open the **Phone** tab. It now shows an `https://...:8788` address and a certificate download link.
-
-Because this is a local self-signed certificate, the phone/tablet must trust it before its browser treats the site as fully secure.
-
-### Samsung / Android
-
-Download/transfer `certs/lyricpad-local.cer` to the phone and install it as a user CA certificate using Android/Samsung Security settings. Menu names differ by Android/One UI version. Then reopen Chrome and use the HTTPS address shown in LyricPad.
-
-### iPad
-
-Open/install the certificate on iPad, then enable full trust for it under **Settings → General → About → Certificate Trust Settings**. Then use the HTTPS address shown in LyricPad in Safari and choose **Add to Home Screen**.
-
-If local certificate setup is annoying, plain HTTP LAN mode remains the easiest development/testing route. A hosted HTTPS deployment is the cleaner long-term solution for anywhere/anytime access.
-
-## OpenAI
-
-The browser never receives your OpenAI API key. Put it in `.env` on the Node server:
-
-```text
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-5.6
+```bash
+npm install
 ```
 
-Then select OpenAI in Settings.
+`postinstall` runs the frontend bundle automatically.
 
-## Ollama
+**Start command**
 
-Ollama defaults to:
-
-```text
-OLLAMA_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=gemma3:4b
+```bash
+npm start
 ```
 
-## Current sync limitation
+The server listens on Render's `PORT` and exposes `/health`.
 
-The song workspace is still stored in each browser/device's local storage. Phone, iPad and PC do **not** automatically share the same song library yet. Cross-device account/sync is the next major infrastructure feature.
+For OpenAI, configure these Render environment variables:
 
+```text
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5-mini
+APP_ACCESS_KEY=a-long-private-value
+```
 
-## v0.6.1 Render fix
+`APP_ACCESS_KEY` protects your hosted AI endpoint. Enter the same value once in LyricPad → Settings on each device. It is unrelated to Firebase login.
 
-The root route `/` now explicitly serves `public/index.html`. At startup the server logs whether `public/index.html` exists and lists the files found in `public/`. If the frontend is missing from the Git repository, the root page returns a clear diagnostic instead of a generic `Not found`.
+---
 
-Recommended Render settings:
+# Firebase / Firestore cloud sync setup
 
-- Build Command: `npm install` (or `yarn`)
-- Start Command: `npm start` (or `node server.mjs`)
-- Health Check Path: `/health`
+You only need to do this once.
 
-Make sure the repository contains the full `public/` folder alongside `server.mjs` and `package.json`.
+## 1. Create a Firebase project
+
+Open the Firebase Console and create/select a project.
+
+Then choose **Project settings → Your apps → Add app → Web** and register LyricPad as a web app.
+
+Firebase gives you a web configuration containing values similar to:
+
+```js
+{
+  apiKey: "...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+}
+```
+
+LyricPad reads these from Render environment variables rather than hard-coding them into the repository.
+
+## 2. Enable Google sign-in
+
+In Firebase Console:
+
+**Authentication → Sign-in method → Google → Enable**
+
+Then under Authentication settings / authorized domains, make sure your Render hostname is allowed, for example:
+
+```text
+lyricpad.onrender.com
+```
+
+LyricPad uses a Google sign-in popup. This avoids the additional cross-origin redirect setup that modern Safari/Chrome can require for Firebase redirect authentication.
+
+## 3. Create Cloud Firestore
+
+In Firebase Console open **Firestore Database** and create the database.
+
+Then replace the Firestore rules with the included `firestore.rules` file:
+
+```text
+firestore.rules
+```
+
+Those rules store songs under:
+
+```text
+/users/<firebase-user-uid>/songs/<song-id>
+```
+
+and only allow the authenticated owner of that UID to read or write them.
+
+Do **not** use `allow read, write: if true` for LyricPad.
+
+## 4. Add Firebase variables to Render
+
+In Render → LyricPad service → Environment, add:
+
+```text
+FIREBASE_API_KEY=...
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_PROJECT_ID=...
+FIREBASE_STORAGE_BUCKET=...
+FIREBASE_MESSAGING_SENDER_ID=...
+FIREBASE_APP_ID=...
+```
+
+Save and redeploy.
+
+The Firebase web configuration identifies the Firebase project; authorization of your lyric data comes from Firebase Authentication and Firestore Security Rules.
+
+## 5. Sign in from LyricPad
+
+After redeployment:
+
+1. Open LyricPad.
+2. Open **Cloud**.
+3. Choose **Sign in with Google**.
+4. Choose the Google account you enabled for the project.
+5. Your currently open local songs are uploaded automatically.
+
+There is also an **Upload open local songs** button if you want to force an initial upload.
+
+## 6. Use another device
+
+Open the same Render URL on Samsung/iPad/another PC and sign in with the same Google account.
+
+Open the **Cloud** tab to see the shared library and reopen a song locally.
+
+Edits are always saved to the local workspace first, then synced to Firestore after a short pause. Firestore's browser persistence also caches cloud data for offline use on supported browsers.
+
+---
+
+# Storage and sync behavior
+
+LyricPad intentionally has two layers:
+
+1. **Local workspace** — immediate autosave and offline safety.
+2. **Firestore cloud library** — cross-device synchronization.
+
+Closing a song tab removes it from the currently open local workspace, but does not delete its Firestore document. Reopen it from **Cloud**.
+
+Use the explicit **Delete** button in Cloud when you really want to remove the cloud copy.
+
+If two devices change the same song around the same time, v0.9 uses the song's modification time to choose which edit is newer. This is appropriate for a personal single-user songwriting app, but it is not Google-Docs-style character-level collaboration.
+
+---
+
+# Firestore rules included
+
+`firestore.rules`:
+
+```text
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/songs/{songId} {
+      allow read, create, update, delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+---
+
+# Local development
+
+Copy `.env.example` to `.env` and fill only the integrations you want.
+
+```bash
+npm install
+npm start
+```
+
+Open:
+
+```text
+http://localhost:8787
+```
+
+Ollama remains available when LyricPad is running locally. A hosted Render service cannot directly reach Ollama running on your home PC.
+
+## Notes
+
+- v0.9 preserves the existing `lyricpad-next-workspace-v1` local-storage key, so upgrading from recent Next builds should retain the local workspace.
+- The service-worker cache name is bumped to v0.9. If a device stubbornly displays an older build, fully close/reopen the installed PWA or hard-refresh the browser.
+- Keep workspace JSON exports as an occasional backup even after enabling cloud sync.

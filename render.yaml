@@ -2,7 +2,7 @@ services:
   - type: web
     name: lyricpad-next
     runtime: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
@@ -13,3 +13,15 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-5-mini
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: FIREBASE_APP_ID
+        sync: false
