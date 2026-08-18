@@ -1,6 +1,6 @@
 {
   "name": "lyricpad-next",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "Cross-platform songwriting notepad with phonetic rhyme intelligence and AI assistance",
   "engines": {

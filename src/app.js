@@ -52,46 +52,101 @@ function wordFrequency(word){const e=wordEntry(word);return Number(e?.[1]||0)}
 function rhymeTail(word){
   const p=phonesFor(word); if(!p.length)return [];
   let idx=-1;
+  // Rhymes begin at the LAST stressed vowel, not merely the last vowel.
   for(let i=0;i<p.length;i++) if(/[12]$/.test(p[i])) idx=i;
   if(idx<0) for(let i=0;i<p.length;i++) if(/\d$/.test(p[i])) idx=i;
-  return p.slice(idx>=0?idx:Math.max(0,p.length-2)).map(phoneBase);
+  return normalizeRhymeTail(p.slice(idx>=0?idx:Math.max(0,p.length-2)).map(phoneBase));
+}
+function normalizeRhymeTail(tail){
+  const out=[];
+  for(let i=0;i<tail.length;i++){
+    let ph=tail[i];
+    // CMUdict occasionally encodes the /ŋg/ boundary differently in related
+    // words (LONGER: NG G, STRONGER: NG). For rhyme perception that extra G
+    // should not split an otherwise identical rhyme tail.
+    if(ph==='G'&&out.at(-1)==='NG')continue;
+    if(ph===out.at(-1))continue;
+    out.push(ph);
+  }
+  return out;
 }
 function vowelNucleus(word){for(const p of rhymeTail(word))if(VOWELS.has(p))return p;return ''}
 function tailKey(word){return rhymeTail(word).join(' ')}
-function lcsRatio(a,b){
+
+const VOWEL_NEIGHBORS={
+  EH:{IH:.76,AE:.72,AH:.48,EY:.42}, IH:{EH:.76,IY:.78,AH:.58,UH:.48},
+  AE:{EH:.72,AA:.48,AH:.52}, AA:{AO:.82,AH:.62,AE:.48}, AO:{AA:.82,OW:.58,AH:.48},
+  AH:{UH:.72,AA:.62,IH:.58,AE:.52,EH:.48,ER:.45}, UH:{UW:.70,AH:.72,IH:.48},
+  IY:{IH:.78,EY:.52}, UW:{UH:.70,OW:.46}, OW:{AO:.58,UW:.46},
+  AY:{EY:.46,OY:.38}, EY:{IY:.52,AY:.46,EH:.42}, OY:{AY:.38}, ER:{AH:.45}
+};
+const CONSONANT_NEIGHBORS={
+  P:{B:.78},B:{P:.78},T:{D:.78},D:{T:.78},K:{G:.78},G:{K:.78},
+  F:{V:.78},V:{F:.78},S:{Z:.78,SH:.45},Z:{S:.78,ZH:.45},SH:{ZH:.78,S:.45,CH:.55},ZH:{SH:.78,Z:.45,JH:.55},
+  CH:{JH:.78,SH:.55},JH:{CH:.78,ZH:.55},M:{N:.46,NG:.38},N:{M:.46,NG:.58},NG:{N:.58,M:.38},
+  R:{L:.32},L:{R:.32}
+};
+function phonemeSimilarity(a,b){
+  if(a===b)return 1;
+  if(VOWELS.has(a)&&VOWELS.has(b))return VOWEL_NEIGHBORS[a]?.[b]??VOWEL_NEIGHBORS[b]?.[a]??.12;
+  if(!VOWELS.has(a)&&!VOWELS.has(b))return CONSONANT_NEIGHBORS[a]?.[b]??CONSONANT_NEIGHBORS[b]?.[a]??0;
+  return 0;
+}
+function weightedTailSimilarity(a,b){
   if(!a.length||!b.length)return 0;
-  const dp=Array(b.length+1).fill(0);
-  for(let i=1;i<=a.length;i++){
-    let prev=0;
-    for(let j=1;j<=b.length;j++){
-      const old=dp[j];
-      dp[j]=a[i-1]===b[j-1]?prev+1:Math.max(dp[j],dp[j-1]);
-      prev=old;
-    }
+  // Dynamic-programming alignment with phonetic substitutions. The stressed
+  // vowel and final sounds matter most to perceived rhyme.
+  const n=a.length,m=b.length,gap=.64;
+  const dp=Array.from({length:n+1},()=>Array(m+1).fill(0));
+  for(let i=1;i<=n;i++)dp[i][0]=dp[i-1][0]-gap;
+  for(let j=1;j<=m;j++)dp[0][j]=dp[0][j-1]-gap;
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    const sim=phonemeSimilarity(a[i-1],b[j-1]);
+    const positional=(i===1&&j===1)?1.45:((i===n&&j===m)?1.22:1);
+    const sub=dp[i-1][j-1]+((sim*2)-1)*positional;
+    dp[i][j]=Math.max(sub,dp[i-1][j]-gap,dp[i][j-1]-gap);
   }
-  return 2*dp[b.length]/(a.length+b.length);
+  const maxWeight=Math.max(n,m)+.67; // allows for stressed/final emphasis
+  return Math.max(0,Math.min(1,(dp[n][m]+maxWeight)/(2*maxWeight)));
 }
-function nearRhymeScore(a,b){
-  const ta=rhymeTail(a),tb=rhymeTail(b);if(!ta.length||!tb.length)return 0;
-  const seq=lcsRatio(ta,tb); const max=Math.min(ta.length,tb.length,4); let match=0;
-  for(let i=1;i<=max;i++)if(ta[ta.length-i]===tb[tb.length-i])match++;
-  return .65*seq+.35*(max?match/max:0);
-}
-function fallbackRhymeScore(a,b){
+function spellingRhymeScore(a,b){
   if(!a||!b||a===b)return 0;
-  const aa=a.replace(/(ing|ed|es|s)$/,''),bb=b.replace(/(ing|ed|es|s)$/,'');
-  if(aa.slice(-3)===bb.slice(-3))return .82;
-  if(aa.slice(-2)===bb.slice(-2))return .74;
+  const aa=a.toLowerCase().replace(/[^a-z]/g,''),bb=b.toLowerCase().replace(/[^a-z]/g,'');
+  if(!aa||!bb)return 0;
+  let suffix=0;while(suffix<Math.min(aa.length,bb.length)&&aa[aa.length-1-suffix]===bb[bb.length-1-suffix])suffix++;
+  if(suffix>=5)return .90;
+  if(suffix>=4)return .84;
+  if(suffix>=3)return .78;
+  if(suffix>=2)return .66;
   return 0;
 }
 function rhymeScore(a,b){
   a=(a||'').toLowerCase();b=(b||'').toLowerCase();if(!a||!b||a===b)return 0;
-  const ta=tailKey(a),tb=tailKey(b);
-  if(ta&&tb&&ta===tb)return 1;
-  if(ta&&tb)return nearRhymeScore(a,b);
-  return fallbackRhymeScore(a,b);
+  const ta=rhymeTail(a),tb=rhymeTail(b);
+  let phonetic=0;
+  if(ta.length&&tb.length){
+    if(ta.join(' ')===tb.join(' '))phonetic=1;
+    else{
+      const nucleus=phonemeSimilarity(ta[0],tb[0]);
+      const tail=weightedTailSimilarity(ta,tb);
+      // A shared/near stressed vowel is essential, while matching codas and
+      // unstressed endings raise the score. This intentionally allows strong
+      // songwriter near-rhymes such as PEAR/FEAR without calling them perfect.
+      phonetic=.58*tail+.42*nucleus;
+      const max=Math.min(ta.length,tb.length,4);let ending=0;
+      for(let i=1;i<=max;i++)ending+=phonemeSimilarity(ta[ta.length-i],tb[tb.length-i]);
+      if(max)phonetic=.78*phonetic+.22*(ending/max);
+    }
+  }
+  // If both words have pronunciation data, trust sound over spelling. This
+  // prevents false positives such as LOVE/MOVE. Spelling only rescues words
+  // that are absent from the pronunciation dictionary.
+  if(ta.length&&tb.length)return phonetic;
+  return spellingRhymeScore(a,b);
 }
-function rhymes(a,b){return rhymeScore(a,b)>=.72}
+const RHYME_THRESHOLDS={perfect:.94,strong:.68,slant:.50};
+function rhymes(a,b){return rhymeScore(a,b)>=RHYME_THRESHOLDS.strong}
+function bestFamilyScore(word,family){return Math.max(0,...(family.words||[family.rep]).map(w=>rhymeScore(word,w)))}
 function syllables(word){
   word=(word||'').toLowerCase().replace(/[^a-z']/g,'');if(!word)return 0;
   const p=phonesFor(word);if(p.length){const n=p.filter(x=>/\d$/.test(x)).length;if(n)return n}
@@ -113,18 +168,21 @@ function buildRhymeIndexes(){
 }
 function rhymeWords(word,limit=28){
   word=(word||'').toLowerCase();if(!word)return {perfect:[],near:[]};
-  const key=tailKey(word);if(!key)return {perfect:[],near:[]};
-  const sourceSyl=syllables(word);
-  const perfect=(PERFECT_INDEX.get(key)||[]).filter(w=>songwriterWordOK(w,word)).sort((a,b)=>wordFrequency(b)-wordFrequency(a)||Math.abs(syllables(a)-sourceSyl)-Math.abs(syllables(b)-sourceSyl)||a.length-b.length).slice(0,limit);
-  const nucleus=vowelNucleus(word),seen=new Set([word,...perfect]),candidates=[];
-  for(const c of VOWEL_INDEX.get(nucleus)||[]){
-    if(seen.has(c)||!songwriterWordOK(c,word))continue;
-    const score=nearRhymeScore(word,c);const ta=rhymeTail(word),tb=rhymeTail(c);
-    const useful=score+.28+(ta.at(-1)===tb.at(-1)?.08:0);
-    if(useful>=.50)candidates.push([useful,wordFrequency(c),Math.abs(syllables(c)-sourceSyl),c.length,c]);
+  const sourceSyl=syllables(word),pool=new Set();
+  const key=tailKey(word);for(const w of PERFECT_INDEX.get(key)||[])pool.add(w);
+  const nucleus=vowelNucleus(word);for(const w of VOWEL_INDEX.get(nucleus)||[])pool.add(w);
+  // Nearby vowel nuclei are valuable for slant rhymes (e.g. PEAR/FEAR).
+  for(const [v,sim] of Object.entries(VOWEL_NEIGHBORS[nucleus]||{}))if(sim>=.55)for(const w of VOWEL_INDEX.get(v)||[])pool.add(w);
+  const perfect=[],near=[];
+  for(const c of pool){
+    if(!songwriterWordOK(c,word))continue;
+    const score=rhymeScore(word,c);if(score<RHYME_THRESHOLDS.slant)continue;
+    const row=[score,wordFrequency(c),Math.abs(syllables(c)-sourceSyl),c.length,c];
+    if(score>=RHYME_THRESHOLDS.strong)perfect.push(row);else near.push(row);
   }
-  candidates.sort((a,b)=>b[0]-a[0]||b[1]-a[1]||a[2]-b[2]||a[3]-b[3]||a[4].localeCompare(b[4]));
-  return {perfect,near:candidates.slice(0,limit).map(x=>x[4])};
+  const sorter=(a,b)=>b[0]-a[0]||b[1]-a[1]||a[2]-b[2]||a[3]-b[3]||a[4].localeCompare(b[4]);
+  perfect.sort(sorter);near.sort(sorter);
+  return {perfect:perfect.slice(0,limit).map(x=>x[4]),near:near.slice(0,limit).map(x=>x[4])};
 }
 async function loadRhymeData(){
   try{
@@ -230,7 +288,7 @@ function analyzeFamilies(text,lineNo){
   const lines=text.split('\n'); const sec=sectionAt(lines,lineNo-1); const rows=[];
   for(let i=0;i<Math.min(lineNo,lines.length);i++){const ln=lines[i].trim();if(ln&&!isSection(ln)&&sectionAt(lines,i)===sec){const ew=endWord(ln);if(ew)rows.push({line:i+1,text:ln,end:ew})}}
   const families=[];
-  for(const row of rows){let fi=families.findIndex(f=>rhymes(row.end,f.rep));if(fi<0){families.push({rep:row.end,words:[row.end],lines:[row.line]});fi=families.length-1}else{if(!families[fi].words.includes(row.end))families[fi].words.push(row.end);families[fi].lines.push(row.line)}row.family=fi}
+  for(const row of rows){let fi=-1,best=0;for(let j=0;j<families.length;j++){const sc=bestFamilyScore(row.end,families[j]);if(sc>best){best=sc;fi=j}}if(best<RHYME_THRESHOLDS.strong)fi=-1;if(fi<0){families.push({rep:row.end,words:[row.end],lines:[row.line]});fi=families.length-1}else{if(!families[fi].words.includes(row.end))families[fi].words.push(row.end);families[fi].lines.push(row.line)}row.family=fi}
   const pattern=rows.map(r=>String.fromCharCode(65+r.family)).join('');
   let auto='new';
   if(rows.length>=3){const x=rows.slice(-3).map(r=>r.family); if(x[0]===x[2]&&x[0]!==x[1]) auto=String.fromCharCode(65+x[1]);}
@@ -248,7 +306,7 @@ function analyzeDocument(text){
   });
   for(const idxs of sections.values()){
     const fams=[];
-    for(const idx of idxs){const row=meta[idx];let fi=fams.findIndex(f=>rhymes(row.end,f.rep));if(fi<0){fams.push({rep:row.end});fi=fams.length-1}row.family=fi;row.familyLetter=String.fromCharCode(65+fi)}
+    for(const idx of idxs){const row=meta[idx];let fi=-1,best=0;for(let j=0;j<fams.length;j++){const sc=bestFamilyScore(row.end,fams[j]);if(sc>best){best=sc;fi=j}}if(best<RHYME_THRESHOLDS.strong)fi=-1;if(fi<0){fams.push({rep:row.end,words:[row.end]});fi=fams.length-1}else if(!fams[fi].words.includes(row.end))fams[fi].words.push(row.end);row.family=fi;row.familyLetter=String.fromCharCode(65+fi)}
   }
   return meta;
 }

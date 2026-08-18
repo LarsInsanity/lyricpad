@@ -1,4 +1,19 @@
-# LyricPad Next v0.9 — Cloud + Feature Parity
+# LyricPad Next v0.9.1 — Better Songwriter Rhyme Engine
+
+
+## v0.9.1 rhyme-engine upgrade
+
+This patch keeps all v0.9 cloud/feedback features and improves rhyme perception:
+
+- rhyme families compare the **last stressed vowel + ending sounds**, not spelling alone
+- CMUdict quirks such as `longer` (`NG G`) vs `stronger` (`NG`) are normalized
+- related stressed vowels can form **strong songwriter near-rhymes** (for example `pear / fear` and `pear / spear`)
+- family assignment compares a new ending against **all words already in the family**, rather than only the first anchor
+- exact/strong/slant thresholds are separated internally
+- slant-rhyme search includes useful neighboring vowel sounds
+- spelling is now only a fallback when pronunciation data is unavailable, preventing false positives such as `love / move`
+
+Examples expected to group in the editor: `slow/know`, `pear/fear`, `pear/spear`, `longer/stronger`, `fire/higher`, `night/light`. Looser pairs such as `mind/time` can still appear as slant suggestions without automatically merging rhyme families.
 
 LyricPad Next is a cross-platform songwriting notepad with phonetic rhyme analysis, syllable/rhyme gutters, realtime feedback, rhyme-aware AI suggestions, and optional Firestore cloud sync.
 
@@ -219,5 +234,5 @@ Ollama remains available when LyricPad is running locally. A hosted Render servi
 ## Notes
 
 - v0.9 preserves the existing `lyricpad-next-workspace-v1` local-storage key, so upgrading from recent Next builds should retain the local workspace.
-- The service-worker cache name is bumped to v0.9. If a device stubbornly displays an older build, fully close/reopen the installed PWA or hard-refresh the browser.
+- The service-worker cache name is bumped to v0.9.1. If a device stubbornly displays an older build, fully close/reopen the installed PWA or hard-refresh the browser.
 - Keep workspace JSON exports as an occasional backup even after enabling cloud sync.
